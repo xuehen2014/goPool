@@ -1,0 +1,30 @@
+branch: days_002
+
+性能测试结果并不够好，我认为可能是因为 workers 都消费同一个 TaskQueue 导致的，这里需要用到太多锁
+
+改进方式：
+
+1. 去掉 GoPool.TaskQueue，在 AddTask 的时候，直接将 Task 丢给 Worker.TaskQueue；
+2. Worker 中保留一个容量为1的 Task Channel；
+3. AddTask 需要从 GoPool.Workers 中检索出来一个空闲的 Worker，当 Worker 完成 Task 处理后，需要能够被放回 GoPool，因此你需要考虑将 workers 实现成一个栈，添加对应的入栈出栈方法
+
+最终实现：
+
+1. GoPool 结构体中的 TaskQueue 被移除了，每个 Worker 都有自己的 TaskQueue
+2. AddTask 方法会将任务添加到一个空闲的 Worker 的 TaskQueue 中。Release 方法会关闭所有 Worker 的 TaskQueue
+3. 添加了 popWorker 和 pushWorker 方法，用于从 workerStack 中取出和放回 Worker。
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+branch: days_003
+
+问题: 没有考虑到当 workers 耗尽的时候 AddTask 方法应该怎么办，显然继续执行 popWorker() 会导致 slice 越界
+
+改进方式:  
+GoPool 中添加一个容量非常大的 Channel 来保存来不及分发给 Worker 的 tasks，然后在一个单独的 goroutine 中监听这个 Channel，不断尝试获取空闲的 Worker，将 Channel 中的任务分发给空闲的 workers
+
+最终实现: 
+GoPool 结构体中添加了一个 taskQueue，用于保存来不及分发给 Worker 的任务。
+添加了 dispatch 方法，用于在一个单独的 goroutine 中监听 taskQueue，并将任务分发给空闲的 Worker。
+AddTask 方法现在只是将任务添加到 taskQueue 中。

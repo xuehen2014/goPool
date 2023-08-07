@@ -1,5 +1,7 @@
 package goPool
 
+import "time"
+
 type Task func()
 
 // GoPool结构体, 代表整个 Worker Pool
@@ -9,32 +11,56 @@ type Task func()
 * Release 方法会关闭任务队列，并等待所有的 Worker 完成当前的任务
  */
 type GoPool struct {
-	TaskQueue  chan Task
-	MaxWorkers int
-	Workers    []*Worker
+	MaxWorkers  int
+	Workers     []*Worker
+	workerStack []int
+	taskQueue   chan Task
 }
 
 func NewGoPool(maxWorkers int) *GoPool {
 	pool := &GoPool{
-		TaskQueue:  make(chan Task),
-		MaxWorkers: maxWorkers,
-		Workers:    make([]*Worker, maxWorkers),
+		MaxWorkers:  maxWorkers,
+		Workers:     make([]*Worker, maxWorkers),
+		workerStack: make([]int, maxWorkers),
+		taskQueue:   make(chan Task, 1e6),
 	}
 	for i := 0; i < maxWorkers; i++ {
-		worker := newWorker(pool.TaskQueue)
+		worker := newWorker()
 		pool.Workers[i] = worker
-		worker.start()
+		pool.workerStack[i] = i
+		worker.start(pool, i)
 	}
+	go pool.dispatch()
 	return pool
 }
 
 func (p *GoPool) AddTask(task Task) {
-	p.TaskQueue <- task
+	p.taskQueue <- task
 }
 
 func (p *GoPool) Release() {
-	close(p.TaskQueue)
+	close(p.taskQueue)
 	for _, worker := range p.Workers {
-		<-worker.TaskQueue
+		close(worker.TaskQueue)
+	}
+}
+
+func (p *GoPool) popWorker() int {
+	workerIndex := p.workerStack[len(p.workerStack)-1]
+	p.workerStack = p.workerStack[:len(p.workerStack)-1]
+	return workerIndex
+}
+
+func (p *GoPool) pushWorker(workerIndex int) {
+	p.workerStack = append(p.workerStack, workerIndex)
+}
+
+func (p *GoPool) dispatch() {
+	for task := range p.taskQueue {
+		for len(p.workerStack) == 0 {
+			time.Sleep(10 * time.Millisecond)
+		}
+		workerIndex := p.popWorker()
+		p.Workers[workerIndex].TaskQueue <- task
 	}
 }
