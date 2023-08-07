@@ -1,5 +1,7 @@
 # goPool  
 
+【notice】注意分支，一个版本一个branch
+
 用Golang实现协成池  
 
 一个高性能、功能完备、简单易用的 Worker Pool 程序应该包含以下 features：
