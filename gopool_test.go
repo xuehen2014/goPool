@@ -13,6 +13,7 @@ func TestGoPool(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		})
 	}
+	time.Sleep(1 * time.Second)
 	pool.Release()
 }
 
