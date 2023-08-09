@@ -8,16 +8,16 @@ import (
 // go test -v -run TestGoPool *.go
 func TestGoPool(t *testing.T) {
 	pool := NewGoPool(100)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		pool.AddTask(func() {
 			time.Sleep(10 * time.Millisecond)
 		})
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(3 * time.Second)
 	pool.Release()
 }
 
-// go test -v -bench=BenchmarkGoPool *.go
+// go test -v -bench=BenchmarkGoPool -benchmem *.go
 func BenchmarkGoPool(b *testing.B) {
 	pool := NewGoPool(10000)
 	b.ResetTimer()

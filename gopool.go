@@ -40,9 +40,14 @@ func (p *GoPool) AddTask(task Task) {
 
 func (p *GoPool) Release() {
 	close(p.taskQueue)
+	for len(p.workerStack) != p.MaxWorkers {
+		time.Sleep(time.Millisecond)
+	}
 	for _, worker := range p.Workers {
 		close(worker.TaskQueue)
 	}
+	p.Workers = nil
+	p.workerStack = nil
 }
 
 func (p *GoPool) popWorker() int {

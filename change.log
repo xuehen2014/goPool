@@ -28,3 +28,14 @@ GoPool 中添加一个容量非常大的 Channel 来保存来不及分发给 Wor
 GoPool 结构体中添加了一个 taskQueue，用于保存来不及分发给 Worker 的任务。
 添加了 dispatch 方法，用于在一个单独的 goroutine 中监听 taskQueue，并将任务分发给空闲的 Worker。
 AddTask 方法现在只是将任务添加到 taskQueue 中。
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+branch: days_004
+
+问题: 没有优雅退出, 在调用Release()方法的时候，可能有worker的任务虽然从channel中取出了，但是还没执行完成
+
+改进方式:
+为了实现优雅关闭，我们可以在 Release 方法中添加一个循环，等待所有的 Worker 完成他们的任务。这可以通过检查 workerStack 的长度来实现，当 workerStack 的长度等于 MaxWorkers 时，说明所有的 Worker 都已经完成了他们的任务
+
