@@ -39,3 +39,11 @@ branch: days_004
 改进方式:
 为了实现优雅关闭，我们可以在 Release 方法中添加一个循环，等待所有的 Worker 完成他们的任务。这可以通过检查 workerStack 的长度来实现，当 workerStack 的长度等于 MaxWorkers 时，说明所有的 Worker 都已经完成了他们的任务
 
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+branch: days_005
+
+问题:
+push 和 pop 操作没有加锁，并发的时候应该会出问题，在调用Release()方法的时候，len(p.workerStack) != p.MaxWorkers 条件有问题,可以考虑加一个互斥锁；
+此外 dispatch() 中的循环 sleep 看起来不太优雅，或许可以添加条件变量，当 len(p.workerStack) == 0 时进入等待；同时 Worker.start() 方法在完成 push worker 之后通过 cond.Signal() 唤醒 dispatch()

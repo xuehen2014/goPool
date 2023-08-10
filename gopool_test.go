@@ -8,12 +8,11 @@ import (
 // go test -v -run TestGoPool *.go
 func TestGoPool(t *testing.T) {
 	pool := NewGoPool(100)
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 500; i++ {
 		pool.AddTask(func() {
 			time.Sleep(10 * time.Millisecond)
 		})
 	}
-	time.Sleep(3 * time.Second)
 	pool.Release()
 }
 
