@@ -1,26 +1,27 @@
 package goPool
 
 import (
+	"github.com/daniel-hutao/spinlock"
+	"sync"
 	"testing"
 	"time"
 )
 
-// go test -v -run TestGoPool *.go
-func TestGoPool(t *testing.T) {
-	pool := NewGoPool(100)
-	for i := 0; i < 500; i++ {
+// go test -v -run TestGoPoolWithMutex
+func TestGoPoolWithMutex(t *testing.T) {
+	pool := NewGoPool(100, WithLock(new(sync.Mutex)))
+	for i := 0; i < 1000; i++ {
 		pool.AddTask(func() {
 			time.Sleep(10 * time.Millisecond)
 		})
 	}
+
 	pool.Release()
 }
 
-// go test -v -bench=BenchmarkGoPool -benchmem *.go
-func BenchmarkGoPool(b *testing.B) {
-	pool := NewGoPool(10000)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+func TestGoPoolWithSpinLock(t *testing.T) {
+	pool := NewGoPool(100, WithLock(new(spinlock.SpinLock)))
+	for i := 0; i < 1000; i++ {
 		pool.AddTask(func() {
 			time.Sleep(10 * time.Millisecond)
 		})

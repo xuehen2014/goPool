@@ -47,3 +47,20 @@ branch: days_005
 问题:
 push 和 pop 操作没有加锁，并发的时候应该会出问题，在调用Release()方法的时候，len(p.workerStack) != p.MaxWorkers 条件有问题,可以考虑加一个互斥锁；
 此外 dispatch() 中的循环 sleep 看起来不太优雅，或许可以添加条件变量，当 len(p.workerStack) == 0 时进入等待；同时 Worker.start() 方法在完成 push worker 之后通过 cond.Signal() 唤醒 dispatch()
+
+改进方式:
+引入锁，执行的时候加锁；引入sync.Cond
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+branch: days_006
+
+问题：
+我想尝试通过 Functional Options 模式给 GoPool 添加配置，Option 中我希望先支持配置 GoPool 中的锁是使用互斥锁还是自旋锁
+
+改进方式：
+一个开源的自旋锁的实现，地址是 github.com/daniel-hutao/spinlock
+在 GoPool 结构体中将 mutex 的类型从 sync.Mutex 更改为 sync.Locker，这样我们就可以使用任何实现了 sync.Locker 接口的锁，包括 sync.Mutex 和 spinlock.SpinLock
+
+添加一个 Option 类型的函数，该函数接受一个 *GoPool 参数并修改其属性。我们可以添加一个 WithLock 函数，该函数接受一个 sync.Locker 参数并将其设置为 GoPool 的锁。
+

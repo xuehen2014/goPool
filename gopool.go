@@ -1,6 +1,7 @@
 package goPool
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -17,19 +18,35 @@ type GoPool struct {
 	Workers     []*Worker
 	workerStack []int
 	taskQueue   chan Task
-	mutex       sync.Mutex
+	lock        sync.Locker
 	cond        *sync.Cond
 }
 
-func NewGoPool(maxWorkers int) *GoPool {
+type Option func(*GoPool)
+
+func WithLock(lock sync.Locker) Option {
+	return func(p *GoPool) {
+		p.lock = lock
+		p.cond = sync.NewCond(p.lock)
+	}
+}
+
+func NewGoPool(maxWorkers int, opts ...Option) *GoPool {
 	pool := &GoPool{
 		MaxWorkers:  maxWorkers,
 		Workers:     make([]*Worker, maxWorkers),
 		workerStack: make([]int, maxWorkers),
 		taskQueue:   make(chan Task, 1e6),
+		lock:        new(sync.Mutex),
 	}
-	pool.mutex = sync.Mutex{}
-	pool.cond = sync.NewCond(&pool.mutex)
+
+	for _, opt := range opts {
+		opt(pool)
+	}
+	if pool.cond == nil {
+		pool.cond = sync.NewCond(pool.lock)
+	}
+
 	for i := 0; i < maxWorkers; i++ {
 		worker := newWorker()
 		pool.Workers[i] = worker
@@ -51,6 +68,8 @@ func (p *GoPool) Release() {
 		p.cond.Wait()
 	}
 	p.cond.L.Unlock()
+	fmt.Println(len(p.workerStack))
+	fmt.Println(p.MaxWorkers)
 	for _, worker := range p.Workers {
 		close(worker.TaskQueue)
 	}
