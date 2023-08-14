@@ -77,3 +77,13 @@ branch: days_007
 在 GoPool 结构体中添加一个新的属性 MinWorkers，并添加一个新的选项 WithMinWorkers 来配置这个属性。然后，我们需要修改 dispatch 方法以实现动态调整 worker 数量的功能。
 
 当 taskQueue 的长度超过 (MaxWorkers - MinWorkers) / 2 + MinWorkers 时，我们可以增加 worker 数量，直到达到 MaxWorkers。当 taskQueue 的长度小于 MinWorkers 时，我们可以减少 worker 数量，直到达到 MinWorkers
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+branch: days_008
+问题：
+不需要公开的方法和属性应该改成小写字母开头，比如 GoPool中的属性
+Option 相关的代码拆分到一个新的源文件中
+
+改进方式：
+如上

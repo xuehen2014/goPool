@@ -6,46 +6,32 @@ import (
 	"sync"
 )
 
-type Task func()
+//worker中要执行的方法
+type task func()
 
-// GoPool结构体, 代表整个 Worker Pool
+// GoPool结构体, 代表整个 worker Pool
 /*
-* NewGoPool 方法会创建指定数量的 Worker，并启动它们
+* NewGoPool 方法会创建指定数量的 worker
 * AddTask 方法会将任务添加到任务队列中
-* Release 方法会关闭任务队列，并等待所有的 Worker 完成当前的任务
+* Release 方法会关闭任务队列，并等待所有的 worker 完成当前的任务
  */
-type GoPool struct {
-	MaxWorkers  int
-	MinWorkers  int
-	Workers     []*Worker
+type goPool struct {
+	workers     []*worker
+	maxWorkers  int
+	minWorkers  int
 	workerStack []int
-	taskQueue   chan Task
+	taskQueue   chan task
 	lock        sync.Locker
 	cond        *sync.Cond
 }
 
-type Option func(*GoPool)
-
-func WithLock(lock sync.Locker) Option {
-	return func(p *GoPool) {
-		p.lock = lock
-		p.cond = sync.NewCond(p.lock)
-	}
-}
-
-func WithMinWorkers(minWorkers int) Option {
-	return func(p *GoPool) {
-		p.MinWorkers = minWorkers
-	}
-}
-
-func NewGoPool(maxWorkers int, opts ...Option) *GoPool {
-	pool := &GoPool{
-		MaxWorkers:  maxWorkers,
-		MinWorkers:  maxWorkers, // Set MinWorkers to MaxWorkers by default
-		Workers:     make([]*Worker, maxWorkers),
+func NewGoPool(maxWorkers int, opts ...Option) *goPool {
+	pool := &goPool{
+		maxWorkers:  maxWorkers,
+		minWorkers:  maxWorkers, // Set minWorkers to maxWorkers by default
+		workers:     make([]*worker, maxWorkers),
 		workerStack: make([]int, maxWorkers),
-		taskQueue:   make(chan Task, 1e6),
+		taskQueue:   make(chan task, 1e6),
 		lock:        new(sync.Mutex),
 	}
 
@@ -56,9 +42,9 @@ func NewGoPool(maxWorkers int, opts ...Option) *GoPool {
 		pool.cond = sync.NewCond(pool.lock)
 	}
 
-	for i := 0; i < pool.MinWorkers; i++ {
+	for i := 0; i < pool.minWorkers; i++ {
 		worker := newWorker()
-		pool.Workers[i] = worker
+		pool.workers[i] = worker
 		pool.workerStack[i] = i
 		worker.start(pool, i)
 	}
@@ -66,25 +52,25 @@ func NewGoPool(maxWorkers int, opts ...Option) *GoPool {
 	return pool
 }
 
-func (p *GoPool) AddTask(task Task) {
-	p.taskQueue <- task
+func (p *goPool) AddTask(t task) {
+	p.taskQueue <- t
 }
 
-func (p *GoPool) Release() {
+func (p *goPool) Release() {
 	close(p.taskQueue)
 	p.cond.L.Lock()
-	for len(p.workerStack) != p.MaxWorkers {
+	for len(p.workerStack) != p.maxWorkers {
 		p.cond.Wait()
 	}
 	p.cond.L.Unlock()
-	for _, worker := range p.Workers {
-		close(worker.TaskQueue)
+	for _, worker := range p.workers {
+		close(worker.taskQueue)
 	}
-	p.Workers = nil
+	p.workers = nil
 	p.workerStack = nil
 }
 
-func (p *GoPool) popWorker() int {
+func (p *goPool) popWorker() int {
 	p.cond.L.Lock()
 	workerIndex := p.workerStack[len(p.workerStack)-1]
 	p.workerStack = p.workerStack[:len(p.workerStack)-1]
@@ -92,30 +78,30 @@ func (p *GoPool) popWorker() int {
 	return workerIndex
 }
 
-func (p *GoPool) pushWorker(workerIndex int) {
+func (p *goPool) pushWorker(workerIndex int) {
 	p.cond.L.Lock()
 	p.workerStack = append(p.workerStack, workerIndex)
 	p.cond.L.Unlock()
 	p.cond.Signal()
 }
 
-func (p *GoPool) dispatch() {
-	for task := range p.taskQueue {
+func (p *goPool) dispatch() {
+	for t := range p.taskQueue {
 		p.cond.L.Lock()
 		for len(p.workerStack) == 0 {
 			p.cond.Wait()
 		}
 		p.cond.L.Unlock()
 		workerIndex := p.popWorker()
-		p.Workers[workerIndex].TaskQueue <- task
+		p.workers[workerIndex].TaskQueue <- t
 		// 动态调整
-		if len(p.taskQueue) > (p.MaxWorkers-p.MinWorkers)/2+p.MinWorkers && len(p.workerStack) < p.MaxWorkers {
+		if len(p.taskQueue) > (p.maxWorkers-p.minWorkers)/2+p.minWorkers && len(p.workerStack) < p.maxWorkers {
 			worker := newWorker()
-			p.Workers = append(p.Workers, worker)
-			p.workerStack = append(p.workerStack, len(p.Workers)-1)
-			worker.start(p, len(p.Workers)-1)
-		} else if len(p.taskQueue) < p.MinWorkers && len(p.workerStack) > p.MinWorkers {
-			p.Workers = p.Workers[:len(p.Workers)-1]
+			p.workers = append(p.workersworkers, worker)
+			p.workerStack = append(p.workerStack, len(p.workers)-1)
+			worker.start(p, len(p.workers)-1)
+		} else if len(p.taskQueue) < p.minWorkers && len(p.workerStack) > p.minWorkers {
+			p.workers = p.workers[:len(p.workers)-1]
 			p.workerStack = p.workerStack[:len(p.workerStack)-1]
 		}
 	}
