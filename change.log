@@ -64,3 +64,16 @@ branch: days_006
 
 添加一个 Option 类型的函数，该函数接受一个 *GoPool 参数并修改其属性。我们可以添加一个 WithLock 函数，该函数接受一个 sync.Locker 参数并将其设置为 GoPool 的锁。
 
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+branch: days_007
+
+问题：
+启动的时候创建的协成池的数量是固定的，可以根据 taskQueue 的长度动态调整 workers 数量，这样更加友好
+启动的时候可以手动指定参数来确定最大协成池的数量和最小数量
+
+改进方式：
+在 GoPool 结构体中添加一个新的属性 MinWorkers，并添加一个新的选项 WithMinWorkers 来配置这个属性。然后，我们需要修改 dispatch 方法以实现动态调整 worker 数量的功能。
+
+当 taskQueue 的长度超过 (MaxWorkers - MinWorkers) / 2 + MinWorkers 时，我们可以增加 worker 数量，直到达到 MaxWorkers。当 taskQueue 的长度小于 MinWorkers 时，我们可以减少 worker 数量，直到达到 MinWorkers
