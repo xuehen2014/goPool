@@ -1,7 +1,7 @@
 package goPool
 
 import (
-	"fmt"
+	// "github.com/davecgh/go-spew/spew"
 	"sync"
 )
 
@@ -68,8 +68,6 @@ func (p *GoPool) Release() {
 		p.cond.Wait()
 	}
 	p.cond.L.Unlock()
-	fmt.Println(len(p.workerStack))
-	fmt.Println(p.MaxWorkers)
 	for _, worker := range p.Workers {
 		close(worker.TaskQueue)
 	}
