@@ -4,6 +4,7 @@ import (
 	//"fmt"
 	// "github.com/davecgh/go-spew/spew"
 	"sync"
+	"time"
 )
 
 //worker中要执行的方法
@@ -23,6 +24,7 @@ type goPool struct {
 	taskQueue   chan task
 	lock        sync.Locker
 	cond        *sync.Cond
+	timeout     time.Duration
 }
 
 func NewGoPool(maxWorkers int, opts ...Option) *goPool {
@@ -33,6 +35,7 @@ func NewGoPool(maxWorkers int, opts ...Option) *goPool {
 		workerStack: make([]int, maxWorkers),
 		taskQueue:   make(chan task, 1e6),
 		lock:        new(sync.Mutex),
+		timeout:     0,
 	}
 
 	for _, opt := range opts {
