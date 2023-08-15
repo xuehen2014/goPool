@@ -26,3 +26,17 @@ func WithTimeout(timeout time.Duration) Option {
 		p.timeout = timeout
 	}
 }
+
+// 结果回调方法
+func WithResultCallback(callback func(interface{})) Option {
+	return func(p *goPool) {
+		p.resultCallback = callback
+	}
+}
+
+// 错误回调方法
+func WithErrorCallback(callback func(error)) Option {
+	return func(p *goPool) {
+		p.errorCallback = callback
+	}
+}

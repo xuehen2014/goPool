@@ -8,7 +8,7 @@ import (
 )
 
 //worker中要执行的方法
-type task func()
+type task func() (interface{}, error)
 
 // GoPool结构体, 代表整个 worker Pool
 /*
@@ -17,14 +17,16 @@ type task func()
 * Release 方法会关闭任务队列，并等待所有的 worker 完成当前的任务
  */
 type goPool struct {
-	workers     []*worker
-	maxWorkers  int
-	minWorkers  int
-	workerStack []int
-	taskQueue   chan task
-	lock        sync.Locker
-	cond        *sync.Cond
-	timeout     time.Duration
+	workers        []*worker
+	maxWorkers     int
+	minWorkers     int
+	workerStack    []int
+	taskQueue      chan task
+	lock           sync.Locker
+	cond           *sync.Cond
+	timeout        time.Duration
+	resultCallback func(interface{})
+	errorCallback  func(error)
 }
 
 func NewGoPool(maxWorkers int, opts ...Option) *goPool {

@@ -20,6 +20,9 @@ func (w *worker) start(pool *goPool, workerIndex int) {
 	go func() {
 		for t := range w.taskQueue {
 			if t != nil {
+				var result interface{}
+				var err error
+
 				if pool.timeout > 0 {
 					ctx, cancel := context.WithTimeout()
 					defer cancel()
@@ -28,18 +31,30 @@ func (w *worker) start(pool *goPool, workerIndex int) {
 					done := make(chan struct{})
 
 					go func() {
-						t()
+						result, err := t()
 						close(done)
 					}()
 
 					select {
-					case <-done:
-					case <-ctx.Done():
-						fmt.Println("Task time out")
+					case <-done: // 任务没有超时
+						if err != nil && pool.errorCallback != nil {
+							pool.errorCallback(err)
+						} else if pool.resultCallback != nil {
+							pool.resultCallback(result)
+						}
+					case <-ctx.Done(): // 任务超时
+						if pool.errorCallback != nil {
+							pool.errorCallback(fmt.Errorf("Task time out"))
+						}
 					}
 				}
 			} else { // 没有超时时间限制
-				t()
+				result, err = t()
+				if err != nil && pool.errorCallback != nil {
+					pool.errorCallback(err)
+				} else if pool.resultCallback != nil {
+					pool.resultCallback(result)
+				}
 			}
 			pool.pushWorker(workerIndex)
 		}
