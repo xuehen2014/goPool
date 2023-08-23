@@ -2,6 +2,7 @@ package goPool
 
 import (
 	"errors"
+	"fmt"
 	"github.com/daniel-hutao/spinlock"
 	"sync"
 	"testing"
@@ -10,17 +11,17 @@ import (
 
 // go test -v -run TestGoPoolWithMutex
 func TestGoPoolWithMutex(t *testing.T) {
-	wg := &sync.WaitGroup{}
-	pool := NewGoPool(100, WithLock(new(sync.Mutex)))
+	pool := NewGoPool(10, WithLock(new(sync.Mutex)))
+	defer pool.Release()
 	for i := 0; i < 1000; i++ {
-		wg.Add(1)
+		tmp := i
 		pool.AddTask(func() (interface{}, error) {
 			time.Sleep(10 * time.Millisecond)
+			fmt.Println(tmp)
 			return nil, nil
 		})
 	}
-	wg.Wait()
-	pool.Release()
+	pool.Wait()
 }
 
 // go test -v -run TestGoPoolWithSpinLock
@@ -118,10 +119,11 @@ func TestGoPoolWithResult(t *testing.T) {
 			t.Errorf("Expected result %v, but got %v", expectedResult, result)
 		}
 	}))
+	defer pool.Release()
 	for i := 0; i < 1000; i++ {
 		pool.AddTask(func() (interface{}, error) {
 			return expectedResult, nil
 		})
 	}
-	pool.Release()
+	pool.Wait()
 }

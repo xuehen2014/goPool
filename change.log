@@ -132,3 +132,10 @@ workers调整的逻辑不太对
 
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+branch: days_013
+
+问题: 调用了 Release() 方法之后，如果 goPool.taskQueue 不为空，则会导致 dispatch() 方法往已经 close 的 Channel 中发送数据
+
+改进方式：为goPool添加一个Wait方法，这个方法可以通过检查 taskQueue 是否为空来实现。如果 taskQueue 不为空，我们就让当前的 goroutine 等待，直到 taskQueue 为空
+        用户在调用Release()方法之前，先调用Wait()等待
