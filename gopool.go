@@ -113,7 +113,7 @@ func (p *goPool) adjustWorkers() {
 
 	for range ticker.C {
 		p.cond.L.Lock()
-		if len(p.taskQueue) > (p.maxWorkers-p.minWorkers)/2+p.minWorkers && len(p.workerStack) < p.maxWorkers {
+		if len(p.taskQueue) > len(p.workerStack)*3/4 && len(p.workerStack) < p.maxWorkers {
 			// Double the number of workers until it reaches the maximum
 			newWorkers := min(len(p.workerStack)*2, p.maxWorkers) - len(p.workerStack)
 			for i := 0; i < newWorkers; i++ {
@@ -122,7 +122,7 @@ func (p *goPool) adjustWorkers() {
 				p.workerStack = append(p.workerStack, len(p.workers)-1)
 				worker.start(p, len(p.workers)-1)
 			}
-		} else if len(p.taskQueue) < p.minWorkers && len(p.workerStack) > p.minWorkers {
+		} else if len(p.taskQueue) == 0 && len(p.workerStack) > p.minWorkers {
 			// Halve the number of workers until it reaches the minimum
 			removeWorkers := max((len(p.workerStack)-p.minWorkers)/2, p.minWorkers)
 			p.workers = p.workers[:len(p.workers)-removeWorkers]
